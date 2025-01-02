@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  ssta_service:
+    image: ssta/ssta_service_image:latest
+    container_name: ssta_service
+    restart: unless-stopped
+    networks:
+      - ssta-net
+    depends_on:
+      - postgres
+    env_file:
+      - ${PWD}/.env
+
+  postgres:
+    image: postgres:17.2
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    networks:
+      - ssta-net
+    volumes:
+      - posgtres_data:/var/lib/postgresql/data/pgdata
+
+volumes:
+  posgtres_data:
+    driver: local
+
+networks:
+  ssta-net:
+    driver: bridge
