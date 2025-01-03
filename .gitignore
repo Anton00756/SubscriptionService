@@ -1,15 +1,11 @@
 .idea
 venv
 
-### Python ###
 __pycache__
 .python-version
 .pytest_cache
 *.lock
-### development ###
-*env
-**.env
+
 .logs
 
-### vscode ### 
 .vscode
