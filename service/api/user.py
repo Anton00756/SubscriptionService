@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from models.user import User
 from schemas.user import UserCreate, UserResponse, UserUpdate
 from db.database import get_db
+from utils.password import hash_password
+
 router = APIRouter()
 
 
@@ -16,9 +18,10 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Пользователь уже существует")
-    
+    # Хеширование пароля
+    hashed_password = hash_password(user.password)
     # Создание нового пользователя
-    new_user = User(**user.model_dump())
+    new_user = User(email=user.email, password=hashed_password, is_active=True)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
