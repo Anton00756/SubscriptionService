@@ -1,2 +1,11 @@
 .idea
 venv
+
+__pycache__
+.python-version
+.pytest_cache
+*.lock
+
+.logs
+
+.vscode
