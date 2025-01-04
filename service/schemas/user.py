@@ -1,10 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
+
 
 class UserBase(BaseModel):
     email: EmailStr
 
+
 class UserCreate(UserBase):
     password: str
+
 
 class UserResponse(UserBase):
     id: int
@@ -12,6 +15,7 @@ class UserResponse(UserBase):
 
     class Config:
         orm_mode = True
+
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None

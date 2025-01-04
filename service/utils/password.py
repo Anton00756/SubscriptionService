@@ -1,10 +1,13 @@
 from passlib.context import CryptContext
 
-# Инициализация контекста для хеширования
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+class PasswordEngine:
+    CONTEXT = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return PasswordEngine.CONTEXT.hash(password)
+
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        return PasswordEngine.CONTEXT.verify(plain_password, hashed_password)
