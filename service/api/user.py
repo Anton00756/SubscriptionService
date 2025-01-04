@@ -28,7 +28,7 @@ async def register_user(user: UserCreate, response: Response, db: Session = Depe
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    set_user_in_cookie(response, user.email)
+    await set_user_in_cookie(response, user.email)
     return new_user
 
 
@@ -39,12 +39,12 @@ async def register_user(user: UserCreate, response: Response, db: Session = Depe
 )
 async def login_user(user: UserCreate, response: Response, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
-    reset_user_from_cookie(response)
+    await reset_user_from_cookie(response)
     if not existing_user:
         raise HTTPException(status_code=404)
     if not PasswordEngine.verify_password(user.password, existing_user.password):
         raise HTTPException(status_code=401)
-    set_user_in_cookie(response, user.email)
+    await set_user_in_cookie(response, user.email)
     response.status_code = 200
     return response
 
@@ -55,7 +55,7 @@ async def login_user(user: UserCreate, response: Response, db: Session = Depends
     response_class=Response
 )
 async def logout(response: Response):
-    reset_user_from_cookie(response)
+    await reset_user_from_cookie(response)
     response.status_code = 200
     return response
 
@@ -96,7 +96,7 @@ async def update_user(response: Response, user_update: UserUpdate, user_mail: st
 
     db.commit()
     db.refresh(user)
-    set_user_in_cookie(response, user.email)
+    await set_user_in_cookie(response, user.email)
     return user
 
 
@@ -113,5 +113,5 @@ async def delete_user(user_mail: str = Depends(get_user_from_cookie), db: Sessio
     db.delete(user)
     db.commit()
     response = Response(status_code=200)
-    reset_user_from_cookie(response)
+    await reset_user_from_cookie(response)
     return response
