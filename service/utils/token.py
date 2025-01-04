@@ -22,6 +22,4 @@ class TokenEngine:
                 return False, ''
             return True, payload['mail']
         except Exception:
-            import traceback
-            print(traceback.format_exc())
             return False, ''
