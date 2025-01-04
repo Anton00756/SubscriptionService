@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from service.models import User
 from service.schemas.user import UserCreate, UserResponse, UserUpdate
 from service.database import get_db
-from service.utils import PasswordEngine, TokenEngine
-from fastapi import Response, Request
+from service.utils import PasswordEngine
+from fastapi import Response
+from .utils import get_user_from_cookie, set_user_in_cookie, reset_user_from_cookie
 
 router = APIRouter()
 
@@ -27,8 +28,7 @@ async def register_user(user: UserCreate, response: Response, db: Session = Depe
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    access_token = TokenEngine.create_access_token(user.email)
-    response.set_cookie('ssta_service', access_token, httponly=True)
+    set_user_in_cookie(response, user.email)
     return new_user
 
 
@@ -39,15 +39,12 @@ async def register_user(user: UserCreate, response: Response, db: Session = Depe
 )
 async def login_user(user: UserCreate, response: Response, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
-    response.delete_cookie('ssta_service')
+    reset_user_from_cookie(response)
     if not existing_user:
-        response.status_code = 404
-        return response
+        raise HTTPException(status_code=404)
     if not PasswordEngine.verify_password(user.password, existing_user.password):
-        response.status_code = 401
-        return response
-    access_token = TokenEngine.create_access_token(user.email)
-    response.set_cookie('ssta_service', access_token, httponly=True)
+        raise HTTPException(status_code=401)
+    set_user_in_cookie(response, user.email)
     response.status_code = 200
     return response
 
@@ -58,8 +55,9 @@ async def login_user(user: UserCreate, response: Response, db: Session = Depends
     response_class=Response
 )
 async def logout(response: Response):
-    response.delete_cookie('ssta_service')
-    return Response(status_code=200)
+    reset_user_from_cookie(response)
+    response.status_code = 200
+    return response
 
 
 @router.get(
@@ -68,10 +66,8 @@ async def logout(response: Response):
     response_model=UserResponse,
     responses={401: {}, 404: {'description': 'Пользователь не существует'}},
 )
-async def get_user_info(request: Request, db: Session = Depends(get_db)):
-    if not (cookie_result := TokenEngine.verify_token(request.cookies.get('ssta_service')))[0]:
-        raise HTTPException(status_code=401)
-    user = db.query(User).filter(User.email == cookie_result[1]).first()
+async def get_user_info(user_mail: str = Depends(get_user_from_cookie), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404)
     return user
@@ -89,20 +85,18 @@ async def get_user_list(db: Session = Depends(get_db)):
     response_model=UserResponse,
     responses={401: {}, 404: {'description': 'Пользователь не существует'}},
 )
-async def update_user(response: Response, user_update: UserUpdate, request: Request, db: Session = Depends(get_db)):
-    if not (cookie_result := TokenEngine.verify_token(request.cookies.get('ssta_service')))[0]:
-        raise HTTPException(status_code=401)
-    user = db.query(User).filter(User.email == cookie_result[1]).first()
+async def update_user(response: Response, user_update: UserUpdate, user_mail: str = Depends(get_user_from_cookie),
+                      db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_mail).first()
     if not user:
-        raise HTTPException(status_code=404, detail='Пользователь не существует')
+        raise HTTPException(status_code=404)
 
     for key, value in user_update.dict(exclude_unset=True).items():
         setattr(user, key, value)
 
     db.commit()
     db.refresh(user)
-    access_token = TokenEngine.create_access_token(user.email)
-    response.set_cookie('ssta_service', access_token, httponly=True)
+    set_user_in_cookie(response, user.email)
     return user
 
 
@@ -112,14 +106,12 @@ async def update_user(response: Response, user_update: UserUpdate, request: Requ
     response_class=Response,
     responses={401: {}, 404: {'description': 'Пользователь не существует'}},
 )
-async def delete_user(request: Request, db: Session = Depends(get_db)):
-    if not (cookie_result := TokenEngine.verify_token(request.cookies.get('ssta_service')))[0]:
-        return Response(status_code=401)
-    user = db.query(User).filter(User.email == cookie_result[1]).first()
+async def delete_user(user_mail: str = Depends(get_user_from_cookie), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         return Response(status_code=404)
     db.delete(user)
     db.commit()
     response = Response(status_code=200)
-    response.delete_cookie('ssta_service')
+    reset_user_from_cookie(response)
     return response
