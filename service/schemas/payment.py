@@ -1,8 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 
-
-class PaymentBase(BaseModel):
+class PaymentCreate(BaseModel):
     amount: float
     status: str
     open_date: datetime
@@ -12,15 +11,11 @@ class PaymentBase(BaseModel):
         from_attributes = True
 
 
-class PaymentCreate(PaymentBase):
-    pass
-
-
-class PaymentResponse(PaymentBase):
+class PaymentResponse(PaymentCreate):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PaymentStatusUpdate(BaseModel):

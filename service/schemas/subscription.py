@@ -1,22 +1,17 @@
 from pydantic import BaseModel
+from datetime import datetime
 
-
-class SubscriptionBase(BaseModel):
+class SubscriptionCreate(BaseModel):
     name: str
     type: str
     price: float
     is_active: bool = True
     auto_renew: bool = False
+    open_date: datetime
     duration: int
 
-
-class SubscriptionCreate(SubscriptionBase):
-    pass
-
-
-class SubscriptionResponse(SubscriptionBase):
+class SubscriptionResponse(SubscriptionCreate):
     id: int
-    user_id: int
-
+    end_date: datetime
     class Config:
-        orm_mode = True
+        from_attributes = True

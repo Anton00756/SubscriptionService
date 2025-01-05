@@ -27,8 +27,10 @@ async def create_subscription(
         name=subscription.name,
         price=subscription.price,
         auto_renew=subscription.auto_renew,
+        open_date=subscription.open_date,
         duration=subscription.duration,
     )
+    new_subscription.calc_end()
     db.add(new_subscription)
     db.commit()
     db.refresh(new_subscription)
