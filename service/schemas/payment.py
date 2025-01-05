@@ -1,16 +1,15 @@
 from pydantic import BaseModel
-from datetime import datetime
 from service.enums import PaymentStatus
 
 
 class PaymentCreate(BaseModel):
     amount: float
-    open_date: datetime
     subscription_id: int
     payment_method_id: int
 
 
 class PaymentResponse(PaymentCreate):
+    open_date: str
     id: int
     status: PaymentStatus
 

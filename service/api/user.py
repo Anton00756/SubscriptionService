@@ -36,6 +36,7 @@ async def register_user(user: UserCreate, response: Response, db: Session = Depe
     '/login',
     summary='Авторизоваться в системе',
     responses={401: {}, 404: {'description': 'Пользователь не существует'}},
+    response_class=Response,
 )
 async def login_user(user: UserCreate, response: Response, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
@@ -95,7 +96,6 @@ async def update_user(
         setattr(user, key, value)
 
     db.commit()
-    db.refresh(user)
     await set_user_in_cookie(response, user.email)
     return user
 

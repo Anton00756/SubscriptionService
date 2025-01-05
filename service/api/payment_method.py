@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from service.database import get_db
 from service.models import PaymentMethod, User
-from service.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse, PaymentMethodUpdate
+from service.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse, ActivePaymentMethodResponse
 from .utils import get_user_from_cookie
 
 router = APIRouter()
@@ -11,8 +12,13 @@ router = APIRouter()
 @router.post(
     '/new',
     summary='Добавить способ оплаты',
-    response_model=PaymentMethodResponse,
-    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Пользователь не найден'}},
+    response_model=ActivePaymentMethodResponse,
+    responses={
+        401: {},
+        403: {'description': 'Доступ запрещён'},
+        404: {'description': 'Пользователь не найден'},
+        409: {'description': 'Способ оплаты с таким номером карты уже существует'},
+    },
 )
 async def create_payment_method(
     payment_method: PaymentMethodCreate, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
@@ -29,18 +35,20 @@ async def create_payment_method(
         cvv=payment_method.cvv,
     )
     db.add(new_payment_method)
-    db.commit()
-    db.refresh(new_payment_method)
+    try:
+        db.commit()
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail='Способ оплаты с таким номером карты уже существует')
     return new_payment_method
 
 
-@router.put(
+@router.get(
     '/info/{payment_method_id}',
     summary='Получить информацию о способе оплаты',
     response_model=PaymentMethodResponse,
     responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Способ оплаты не найден'}},
 )
-async def update_payment_method(
+async def get_payment_method(
     payment_method_id: int, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
 ):
     payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id).first()
@@ -55,14 +63,13 @@ async def update_payment_method(
 @router.get(
     '/list',
     summary='Получить список способов оплаты',
-    response_model=list[PaymentMethodResponse],
+    response_model=list[ActivePaymentMethodResponse],
     responses={401: {}, 404: {'description': 'Пользователь не найден'}},
 )
 async def get_payment_methods_list(db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)):
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
-
     payment_methods = db.query(PaymentMethod).filter(PaymentMethod.user_id == user.id, PaymentMethod.is_active).all()
     return payment_methods
 
@@ -70,12 +77,12 @@ async def get_payment_methods_list(db: Session = Depends(get_db), user_mail: str
 @router.put(
     '/update/{payment_method_id}',
     summary='Обновить способ оплаты',
-    response_model=PaymentMethodResponse,
+    response_model=ActivePaymentMethodResponse,
     responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Способ оплаты не найден'}},
 )
 async def update_payment_method(
     payment_method_id: int,
-    payment_method_update: PaymentMethodUpdate,
+    payment_method_request: PaymentMethodCreate,
     db: Session = Depends(get_db),
     user_mail: str = Depends(get_user_from_cookie),
 ):
@@ -89,11 +96,13 @@ async def update_payment_method(
     if payment_method.user_id != user.id:
         raise HTTPException(status_code=403, detail='Доступ запрещён')
 
-    for key, value in payment_method_update.dict(exclude_unset=True).items():
+    for key, value in payment_method_request.dict(exclude_unset=True).items():
         setattr(payment_method, key, value)
 
-    db.commit()
-    db.refresh(payment_method)
+    try:
+        db.commit()
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail='Способ оплаты с таким номером карты уже существует')
     return payment_method
 
 

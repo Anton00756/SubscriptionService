@@ -1,8 +1,8 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from service.models import Subscription, User
+from service.models import Subscription, User, PaymentMethod
 from service.schemas.subscription import SubscriptionCreate, SubscriptionResponse
 from service.database import get_db
 from .utils import get_user_from_cookie
@@ -16,7 +16,7 @@ router = APIRouter()
     response_model=SubscriptionResponse,
     responses={
         401: {},
-        404: {'description': 'Пользователь не найден'},
+        404: {'description': 'Пользователь не найден / Метод оплаты не найден'},
         409: {'description': 'Пользователь не активен'},
     },
 )
@@ -28,16 +28,23 @@ async def create_subscription(
         raise HTTPException(status_code=404, detail='Пользователь не найден')
     if not user.is_active:
         raise HTTPException(status_code=409, detail='Пользователь не активен')
-
+    if subscription.auto_renew and subscription.payment_method_id is None:
+        raise HTTPException(status_code=404, detail='Метод оплаты не найден')
+    if subscription.payment_method_id is not None:
+        payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == subscription.payment_method_id).first()
+        if not payment_method:
+            raise HTTPException(status_code=404, detail='Метод оплаты не найден')
+    open_date = datetime.now()
     new_subscription = Subscription(
         type=subscription.type,
         user_id=user.id,
         name=subscription.name,
         price=subscription.price,
         auto_renew=subscription.auto_renew,
-        open_date=subscription.open_date,
         duration=subscription.duration,
-        end_date=subscription.open_date + timedelta(days=subscription.duration),
+        open_date=open_date.isoformat(),
+        end_date=(open_date + timedelta(days=subscription.duration)).isoformat(),
+        payment_method_id=subscription.payment_method_id,
     )
     db.add(new_subscription)
     db.commit()
@@ -84,7 +91,7 @@ async def get_subscription_list(db: Session = Depends(get_db), user_mail: str = 
     responses={
         401: {},
         403: {'description': 'Доступ запрещён'},
-        404: {'description': 'Подписка не найдена'},
+        404: {'description': 'Подписка не найдена / Метод оплаты не найден'},
         409: {'description': 'Подписка отменена'},
     },
 )
@@ -102,12 +109,18 @@ async def update_subscription(
         raise HTTPException(status_code=403, detail='Доступ запрещён')
     if not subscription.is_active:
         raise HTTPException(status_code=409, detail='Подписка отменена')
+    if subscription.auto_renew and subscription.payment_method_id is None:
+        raise HTTPException(status_code=404, detail='Метод оплаты не найден')
+    schema_data = subscription_data.model_dump(exclude_unset=True)
+    if 'payment_method_id' in schema_data and subscription.payment_method_id is not None:
+        payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == subscription.payment_method_id).first()
+        if not payment_method:
+            raise HTTPException(status_code=404, detail='Метод оплаты не найден')
 
-    for key, value in subscription_data.model_dump(exclude_unset=True).items():
+    for key, value in schema_data.items():
         setattr(subscription, key, value)
 
     db.commit()
-    db.refresh(subscription)
     return subscription
 
 

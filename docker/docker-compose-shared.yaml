@@ -10,6 +10,16 @@ services:
     volumes:
       - ${PWD}/service:/work_dir/service
 
+  autotests:
+    extends:
+      file: docker-compose.yaml
+      service: autotests
+    volumes:
+      - ${PWD}/autotests:/work_dir/autotests
+      - ${PWD}/service/schemas:/work_dir/service/schemas
+      - ${PWD}/service/utils:/work_dir/service/utils
+      - ${PWD}/service/enums.py:/work_dir/service/enums.py
+
   postgres:
     extends:
       file: docker-compose.yaml

@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float
 from sqlalchemy.orm import DeclarativeBase, relationship
-from datetime import datetime, timedelta
 
 
 class Base(DeclarativeBase):
@@ -27,11 +26,13 @@ class Subscription(Base):
     is_active = Column(Boolean, default=True)
     duration = Column(Integer, default=30)
     auto_renew = Column(Boolean, default=False)
-    open_date = Column(DateTime, default=datetime.now)
-    end_date = Column(DateTime)
+    open_date = Column(String)
+    end_date = Column(String)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    payment_method_id = Column(Integer, ForeignKey('payment_methods.id'), nullable=True, default=None)
     user = relationship('User', back_populates='subscriptions')
     payments = relationship('Payment', back_populates='subscription')
+    payment_method = relationship('PaymentMethod', back_populates='subscriptions')
 
 
 class PaymentMethod(Base):
@@ -45,6 +46,7 @@ class PaymentMethod(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship('User', back_populates='payment_methods')
     payments = relationship('Payment', back_populates='payment_method')
+    subscriptions = relationship('Subscription', back_populates='payment_method')
 
 
 class Payment(Base):
@@ -54,7 +56,7 @@ class Payment(Base):
     amount = Column(Float, nullable=False)
     status = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'))
-    open_date = Column(DateTime, default=datetime.now)
+    open_date = Column(String)
     payment_method_id = Column(Integer, ForeignKey('payment_methods.id'))
     user = relationship('User', back_populates='payments')
     subscription = relationship('Subscription', back_populates='payments')

@@ -1,4 +1,4 @@
-from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -9,15 +9,16 @@ class SubscriptionCreate(BaseModel):
     name: str
     type: SubscriptionRate
     price: float
-    is_active: bool = True
     auto_renew: bool = False
-    open_date: datetime
     duration: int
+    payment_method_id: Optional[int] = None
 
 
 class SubscriptionResponse(SubscriptionCreate):
     id: int
-    end_date: datetime
+    is_active: bool
+    open_date: str
+    end_date: str
 
     class Config:
         from_attributes = True
