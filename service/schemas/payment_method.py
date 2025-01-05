@@ -3,7 +3,9 @@ from pydantic import BaseModel
 
 class PaymentMethodBase(BaseModel):
     type: str
-    details: str
+    card_number: str
+    expiry_date: str
+    cvv: int
 
 
 class PaymentMethodCreate(PaymentMethodBase):
@@ -18,5 +20,7 @@ class PaymentMethodResponse(PaymentMethodBase):
 
 
 class PaymentMethodUpdate(BaseModel):
-    type: str | None = None
-    details: str | None = None
+    type: str
+    card_number: str
+    expiry_date: str
+    cvv: int

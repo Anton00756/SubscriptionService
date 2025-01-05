@@ -9,24 +9,26 @@ router = APIRouter()
 
 
 @router.post(
-    "/new",
-    summary="Создать платёж",
+    '/new',
+    summary='Создать платёж',
     response_model=PaymentResponse,
 )
 async def create_payment(
     payment: PaymentCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_user_from_cookie),
+    user_mail: str = Depends(get_user_from_cookie),
 ):
-    user = db.query(User).filter(User.email == current_user).first()
+    user = db.query(User).filter(User.email == user_mail).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
 
     new_payment = Payment(
         amount=payment.amount,
         status=payment.status,  # Статус платежа по умолчанию
-        user_id=user.id
+        user_id=user.id,
+        open_date=payment.open_date,
+        subscription_id=payment.subscription_id,
     )
     db.add(new_payment)
     db.commit()
@@ -35,41 +37,41 @@ async def create_payment(
 
 
 @router.get(
-    "/list",
-    summary="Получить список платежей пользователя",
+    '/list',
+    summary='Получить список платежей пользователя',
     response_model=list[PaymentResponse],
 )
 async def get_payment_list(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_user_from_cookie),
+    user_mail: str = Depends(get_user_from_cookie),
 ):
-    user = db.query(User).filter(User.email == current_user).first()
+    user = db.query(User).filter(User.email == user_mail).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
 
     payments = db.query(Payment).filter(Payment.user_id == user.id).all()
     return payments
 
 
 @router.post(
-    "/set_status",
-    summary="Изменить статус платежа",
+    '/set_status',
+    summary='Изменить статус платежа',
     response_model=PaymentResponse,
 )
 async def set_payment_status(
     payment_status_update: PaymentStatusUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_user_from_cookie),
+    user_mail: str = Depends(get_user_from_cookie),
 ):
     payment = db.query(Payment).filter(Payment.id == payment_status_update.payment_id).first()
     if not payment:
-        raise HTTPException(status_code=404, detail="Платёж не найден")
+        raise HTTPException(status_code=404, detail='Платёж не найден')
 
-    user = db.query(User).filter(User.email == current_user).first()
+    user = db.query(User).filter(User.email == user_mail).first()
     if payment.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Доступ запрещен")
+        raise HTTPException(status_code=403, detail='Доступ запрещен')
 
     payment.status = payment_status_update.status
     db.commit()
