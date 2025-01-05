@@ -1,18 +1,18 @@
 from pydantic import BaseModel
 from datetime import datetime
+from service.enums import PaymentStatus
+
 
 class PaymentCreate(BaseModel):
     amount: float
-    status: str
     open_date: datetime
     subscription_id: int
-
-    class Config:
-        from_attributes = True
+    payment_method_id: int
 
 
 class PaymentResponse(PaymentCreate):
     id: int
+    status: PaymentStatus
 
     class Config:
         from_attributes = True
@@ -20,4 +20,4 @@ class PaymentResponse(PaymentCreate):
 
 class PaymentStatusUpdate(BaseModel):
     payment_id: int
-    status: str
+    status: PaymentStatus
