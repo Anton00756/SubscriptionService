@@ -12,6 +12,18 @@ services:
     env_file:
       - ${PWD}/.env
 
+  autotests:
+    image: ssta/autotests_image:latest
+    container_name: autotests
+    restart: unless-stopped
+    networks:
+      - ssta-net
+    depends_on:
+      - ssta_service
+    env_file:
+      - ${PWD}/.env
+    entrypoint: ['sleep', 'infinity']
+
   postgres:
     image: postgres:17.2
     container_name: postgres
