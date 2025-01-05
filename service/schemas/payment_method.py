@@ -8,15 +8,12 @@ class PaymentMethodCreate(BaseModel):
     cvv: int
 
 
-class PaymentMethodResponse(PaymentMethodCreate):
+class ActivePaymentMethodResponse(PaymentMethodCreate):
     id: int
 
     class Config:
         from_attributes = True
 
 
-class PaymentMethodUpdate(BaseModel):
-    type: str
-    card_number: str
-    expiry_date: str
-    cvv: int
+class PaymentMethodResponse(ActivePaymentMethodResponse):
+    is_active: bool

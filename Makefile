@@ -19,7 +19,7 @@ up: down
     endif
 
 test:
-	@docker exec autotests sh -c 'python3 -m pytest autotests/${tests_path} -v -W ignore::DeprecationWarning -W ignore::UserWarning'
+	@docker exec autotests sh -c 'python3 -m pytest autotests/${tests_path} -v -W ignore::DeprecationWarning --log-cli-level=INFO'
 
 down:
 	@docker-compose -p ssta down -v

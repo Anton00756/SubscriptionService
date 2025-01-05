@@ -7,6 +7,7 @@ RUN mkdir work_dir
 WORKDIR /work_dir
 COPY autotests autotests
 COPY service/schemas service/schemas
+COPY service/enums.py service/enums.py
 
 RUN addgroup -g 1000 user && adduser -h /home/user -u 1000 -G user -s /bin/sh -D user
 RUN addgroup -g 1001 docker && addgroup user docker

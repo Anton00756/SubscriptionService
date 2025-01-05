@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -37,7 +39,7 @@ async def create_payment(
         amount=payment.amount,
         status=PaymentStatus.CREATED,
         user_id=user.id,
-        open_date=payment.open_date,
+        open_date=datetime.now().isoformat(),
         subscription_id=payment.subscription_id,
         payment_method_id=payment.payment_method_id,
     )

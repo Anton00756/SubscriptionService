@@ -18,6 +18,7 @@ services:
       - ${PWD}/autotests:/work_dir/autotests
       - ${PWD}/service/schemas:/work_dir/service/schemas
       - ${PWD}/service/utils:/work_dir/service/utils
+      - ${PWD}/service/enums.py:/work_dir/service/enums.py
 
   postgres:
     extends:

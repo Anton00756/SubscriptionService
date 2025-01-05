@@ -61,7 +61,7 @@ def test_get_user_info(api, auth_session):
         assert response_data.email == auth_session.mail
 
 
-def test_get_users_list(api):
+def test_get_users_list(api, auth_session):
     with allure.step('Получаем список зарегистрированных пользователей'):
         response = api.user.get_users_list(Session())
         assert response.status_code == 200

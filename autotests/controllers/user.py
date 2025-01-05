@@ -4,7 +4,7 @@ from requests import Session, Response
 
 class UserAPI:
     def __init__(self, base_url: str):
-        self.url = f"{base_url}/user"
+        self.url = f'{base_url}/user'
 
     def register_user(self, session: Session, data: UserCreate) -> Response:
         return session.post(f'{self.url}/register', json=data.dict())
@@ -26,4 +26,3 @@ class UserAPI:
 
     def delete_user(self, session: Session) -> Response:
         return session.delete(f'{self.url}/delete')
-

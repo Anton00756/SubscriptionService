@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.get(
-    '/notifications',
+    '/',
     summary='Получить уведомления о подписках',
     response_model=list[NotificationResponse],
     responses={401: {}, 404: {'description': 'Пользователь не найден'}},
@@ -28,8 +28,7 @@ async def get_notifications(
 
     notifications = []
     for subscription in subscriptions:
-        end_date = subscription.end_date
-        days_left = max((end_date - datetime.now()).days, 0)
+        days_left = max((datetime.fromisoformat(subscription.end_date) - datetime.now()).days, 0)
         if subscription.auto_renew:
             message = (
                 f'Для подписки {subscription.name} будет выполнен автоплатёж в размере {subscription.price} '
