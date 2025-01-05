@@ -12,19 +12,15 @@ router = APIRouter()
     '/new',
     summary='Добавить способ оплаты',
     response_model=PaymentMethodResponse,
+    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Пользователь не найден'}},
 )
 async def create_payment_method(
-    payment_method: PaymentMethodCreate,
-    request: Request,
-    db: Session = Depends(get_db),
-    user_mail: str = Depends(get_user_from_cookie),
+    payment_method: PaymentMethodCreate, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
 ):
-    # Получение пользователя из базы
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
 
-    # Создание способа оплаты
     new_payment_method = PaymentMethod(
         type=payment_method.type,
         user_id=user.id,
@@ -38,21 +34,36 @@ async def create_payment_method(
     return new_payment_method
 
 
+@router.put(
+    '/info/{payment_method_id}',
+    summary='Получить информацию о способе оплаты',
+    response_model=PaymentMethodResponse,
+    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Способ оплаты не найден'}},
+)
+async def update_payment_method(
+    payment_method_id: int, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
+):
+    payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id).first()
+    if not payment_method:
+        raise HTTPException(status_code=404, detail='Способ оплаты не найден')
+    user = db.query(User).filter(User.email == user_mail).first()
+    if payment_method.user_id != user.id:
+        raise HTTPException(status_code=403, detail='Доступ запрещён')
+    return payment_method
+
+
 @router.get(
     '/list',
     summary='Получить список способов оплаты',
     response_model=list[PaymentMethodResponse],
+    responses={401: {}, 404: {'description': 'Пользователь не найден'}},
 )
-async def get_payment_methods_list(
-    request: Request,
-    db: Session = Depends(get_db),
-    user_mail: str = Depends(get_user_from_cookie),
-):
+async def get_payment_methods_list(db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)):
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
 
-    payment_methods = db.query(PaymentMethod).filter(PaymentMethod.user_id == user.id).all()
+    payment_methods = db.query(PaymentMethod).filter(PaymentMethod.user_id == user.id, PaymentMethod.is_active).all()
     return payment_methods
 
 
@@ -60,21 +71,23 @@ async def get_payment_methods_list(
     '/update/{payment_method_id}',
     summary='Обновить способ оплаты',
     response_model=PaymentMethodResponse,
+    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Способ оплаты не найден'}},
 )
 async def update_payment_method(
     payment_method_id: int,
     payment_method_update: PaymentMethodUpdate,
-    request: Request,
     db: Session = Depends(get_db),
     user_mail: str = Depends(get_user_from_cookie),
 ):
-    payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id).first()
+    payment_method = (
+        db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id, PaymentMethod.is_active).first()
+    )
     if not payment_method:
         raise HTTPException(status_code=404, detail='Способ оплаты не найден')
 
     user = db.query(User).filter(User.email == user_mail).first()
     if payment_method.user_id != user.id:
-        raise HTTPException(status_code=403, detail='Доступ запрещен')
+        raise HTTPException(status_code=403, detail='Доступ запрещён')
 
     for key, value in payment_method_update.dict(exclude_unset=True).items():
         setattr(payment_method, key, value)
@@ -88,21 +101,21 @@ async def update_payment_method(
     '/delete/{payment_method_id}',
     summary='Удалить способ оплаты',
     response_class=Response,
+    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Способ оплаты не найден'}},
 )
 async def delete_payment_method(
-    payment_method_id: int,
-    request: Request,
-    db: Session = Depends(get_db),
-    user_mail: str = Depends(get_user_from_cookie),
+    payment_method_id: int, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
 ):
-    payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id).first()
+    payment_method = (
+        db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id, PaymentMethod.is_active).first()
+    )
     if not payment_method:
         raise HTTPException(status_code=404, detail='Способ оплаты не найден')
 
     user = db.query(User).filter(User.email == user_mail).first()
     if payment_method.user_id != user.id:
-        raise HTTPException(status_code=403, detail='Доступ запрещен')
+        raise HTTPException(status_code=403, detail='Доступ запрещён')
 
-    db.delete(payment_method)
+    payment_method.is_active = False
     db.commit()
     return Response(status_code=200)

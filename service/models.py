@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime, Text
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
+from sqlalchemy.orm import DeclarativeBase, relationship
 from datetime import datetime, timedelta
 
 
@@ -17,7 +16,7 @@ class User(Base):
     subscriptions = relationship('Subscription', back_populates='user')
     payment_methods = relationship('PaymentMethod', back_populates='user')
     payments = relationship('Payment', back_populates='user')
-    notifications =relationship('Notification', back_populates='user')
+
 
 class Subscription(Base):
     __tablename__ = 'subscriptions'
@@ -28,16 +27,11 @@ class Subscription(Base):
     is_active = Column(Boolean, default=True)
     duration = Column(Integer, default=30)
     auto_renew = Column(Boolean, default=False)
-    open_date = Column(DateTime, default=datetime.now) 
+    open_date = Column(DateTime, default=datetime.now)
     end_date = Column(DateTime)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    # Связь с таблицей пользователей
     user = relationship('User', back_populates='subscriptions')
-    payments = relationship('Payment',back_populates='subscription')
-
-    def calc_end(self):
-        if self.open_date and self.duration:
-            self.end_date = self.open_date + timedelta(days=self.duration)
+    payments = relationship('Payment', back_populates='subscription')
 
 
 class PaymentMethod(Base):
@@ -47,29 +41,21 @@ class PaymentMethod(Base):
     card_number = Column(String, unique=True)
     expiry_date = Column(String)
     cvv = Column(Integer)
+    is_active = Column(Boolean, default=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship('User', back_populates='payment_methods')
+    payments = relationship('Payment', back_populates='payment_method')
 
 
 class Payment(Base):
     __tablename__ = 'payments'
     id = Column(Integer, primary_key=True, index=True)
-    subscription_id = Column(Integer,ForeignKey('subscriptions.id'))
-    amount = Column(Float, nullable=False)  # Сумма платежа
-    status = Column(String, nullable=False)  # Статус платежа (pending, success, failed)
+    subscription_id = Column(Integer, ForeignKey('subscriptions.id'))
+    amount = Column(Float, nullable=False)
+    status = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'))
     open_date = Column(DateTime, default=datetime.now)
+    payment_method_id = Column(Integer, ForeignKey('payment_methods.id'))
     user = relationship('User', back_populates='payments')
-    subscription = relationship('Subscription',back_populates='payments')
-
-class Notification(Base):
-    __tablename__ = 'notifications'
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    subscription_id = Column(Integer, ForeignKey('subscriptions.id'), nullable=False)
-    message = Column(String, nullable=False)
-    days_left = Column(Integer, nullable=False)  # Оставшиеся дни
-    created_at = Column(DateTime, default=datetime.now)  # Время создания уведомления
-
-    user = relationship("User", back_populates="notifications")
-    subscription = relationship("Subscription")
+    subscription = relationship('Subscription', back_populates='payments')
+    payment_method = relationship('PaymentMethod', back_populates='payments')

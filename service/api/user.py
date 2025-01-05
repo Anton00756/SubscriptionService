@@ -49,11 +49,7 @@ async def login_user(user: UserCreate, response: Response, db: Session = Depends
     return response
 
 
-@router.post(
-    '/logout',
-    summary='Выйти из системы',
-    response_class=Response
-)
+@router.post('/logout', summary='Выйти из системы', response_class=Response)
 async def logout(response: Response):
     await reset_user_from_cookie(response)
     response.status_code = 200
@@ -85,8 +81,12 @@ async def get_user_list(db: Session = Depends(get_db)):
     response_model=UserResponse,
     responses={401: {}, 404: {'description': 'Пользователь не существует'}},
 )
-async def update_user(response: Response, user_update: UserUpdate, user_mail: str = Depends(get_user_from_cookie),
-                      db: Session = Depends(get_db)):
+async def update_user(
+    response: Response,
+    user_update: UserUpdate,
+    user_mail: str = Depends(get_user_from_cookie),
+    db: Session = Depends(get_db),
+):
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404)

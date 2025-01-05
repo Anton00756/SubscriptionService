@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class PaymentMethodCreate(BaseModel):
     type: str
     card_number: str

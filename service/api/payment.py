@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from service.database import get_db
-from service.models import Payment, User
+from service.enums import PaymentStatus
+from service.models import Payment, User, PaymentMethod, Subscription
 from service.schemas.payment import PaymentCreate, PaymentResponse, PaymentStatusUpdate
 from .utils import get_user_from_cookie
 
@@ -12,23 +14,32 @@ router = APIRouter()
     '/new',
     summary='Создать платёж',
     response_model=PaymentResponse,
+    responses={401: {}, 404: {'description': 'Пользователь не найден / Подписка не найдена / Метод оплаты не найден'}},
 )
 async def create_payment(
-    payment: PaymentCreate,
-    request: Request,
-    db: Session = Depends(get_db),
-    user_mail: str = Depends(get_user_from_cookie),
+    payment: PaymentCreate, db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)
 ):
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
+    subscription = (
+        db.query(Subscription).filter(Subscription.id == payment.subscription_id, Subscription.is_active).first()
+    )
+    if not subscription:
+        raise HTTPException(status_code=404, detail='Подписка не найдена')
+    payment_method = (
+        db.query(PaymentMethod).filter(PaymentMethod.id == payment.payment_method_id, PaymentMethod.is_active).first()
+    )
+    if not payment_method:
+        raise HTTPException(status_code=404, detail='Метод оплаты не найден')
 
     new_payment = Payment(
         amount=payment.amount,
-        status=payment.status,  # Статус платежа по умолчанию
+        status=PaymentStatus.CREATED,
         user_id=user.id,
         open_date=payment.open_date,
         subscription_id=payment.subscription_id,
+        payment_method_id=payment.payment_method_id,
     )
     db.add(new_payment)
     db.commit()
@@ -40,12 +51,9 @@ async def create_payment(
     '/list',
     summary='Получить список платежей пользователя',
     response_model=list[PaymentResponse],
+    responses={401: {}, 404: {'description': 'Пользователь не найден'}},
 )
-async def get_payment_list(
-    request: Request,
-    db: Session = Depends(get_db),
-    user_mail: str = Depends(get_user_from_cookie),
-):
+async def get_payment_list(db: Session = Depends(get_db), user_mail: str = Depends(get_user_from_cookie)):
     user = db.query(User).filter(User.email == user_mail).first()
     if not user:
         raise HTTPException(status_code=404, detail='Пользователь не найден')
@@ -58,10 +66,10 @@ async def get_payment_list(
     '/set_status',
     summary='Изменить статус платежа',
     response_model=PaymentResponse,
+    responses={401: {}, 403: {'description': 'Доступ запрещён'}, 404: {'description': 'Платёж не найден'}},
 )
 async def set_payment_status(
     payment_status_update: PaymentStatusUpdate,
-    request: Request,
     db: Session = Depends(get_db),
     user_mail: str = Depends(get_user_from_cookie),
 ):
@@ -71,7 +79,7 @@ async def set_payment_status(
 
     user = db.query(User).filter(User.email == user_mail).first()
     if payment.user_id != user.id:
-        raise HTTPException(status_code=403, detail='Доступ запрещен')
+        raise HTTPException(status_code=403, detail='Доступ запрещён')
 
     payment.status = payment_status_update.status
     db.commit()
